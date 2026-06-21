@@ -8,6 +8,8 @@ abstract class IAuthRepository {
 
 abstract class IChatRepository {
   Future<List<ChatSummary>> getChats(UserCredentials credentials);
+  Future<ChatSummary> createGroup(UserCredentials credentials, String name);
+  Future<ChatSummary> joinChatById(UserCredentials credentials, String chatId);
   Future<({List<Messenge> messages, String userId})> getMessages(
     UserCredentials credentials,
     String chatId,

@@ -16,6 +16,26 @@ class ChatListRequested extends ChatEvent {
   List<Object?> get props => [credentials];
 }
 
+class ChatGroupCreated extends ChatEvent {
+  const ChatGroupCreated({required this.credentials, required this.name});
+
+  final UserCredentials credentials;
+  final String name;
+
+  @override
+  List<Object?> get props => [credentials, name];
+}
+
+class ChatJoinedById extends ChatEvent {
+  const ChatJoinedById({required this.credentials, required this.chatId});
+
+  final UserCredentials credentials;
+  final String chatId;
+
+  @override
+  List<Object?> get props => [credentials, chatId];
+}
+
 class ChatOpened extends ChatEvent {
   const ChatOpened({required this.credentials, required this.chat});
 
@@ -40,10 +60,7 @@ class ChatMessagesRefreshed extends ChatEvent {
 }
 
 class ChatMessageSent extends ChatEvent {
-  const ChatMessageSent({
-    required this.credentials,
-    required this.content,
-  });
+  const ChatMessageSent({required this.credentials, required this.content});
 
   final UserCredentials credentials;
   final String content;

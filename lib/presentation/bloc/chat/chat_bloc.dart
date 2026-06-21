@@ -14,9 +14,11 @@ part 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   ChatBloc({required IChatRepository chatRepository})
-      : _chatRepository = chatRepository,
-        super(const ChatState.initial()) {
+    : _chatRepository = chatRepository,
+      super(const ChatState.initial()) {
     on<ChatListRequested>(_onChatListRequested);
+    on<ChatGroupCreated>(_onChatGroupCreated);
+    on<ChatJoinedById>(_onChatJoinedById);
     on<ChatOpened>(_onChatOpened);
     on<ChatClosed>(_onChatClosed);
     on<ChatMessagesRefreshed>(_onChatMessagesRefreshed);
@@ -31,20 +33,103 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     ChatListRequested event,
     Emitter<ChatState> emit,
   ) async {
-    emit(state.copyWith(listStatus: ChatListStatus.loading, errorMessage: null));
+    emit(
+      state.copyWith(listStatus: ChatListStatus.loading, errorMessage: null),
+    );
     try {
       final chats = await _chatRepository.getChats(event.credentials);
-      emit(
-        state.copyWith(
-          listStatus: ChatListStatus.success,
-          chats: chats,
-        ),
-      );
+      emit(state.copyWith(listStatus: ChatListStatus.success, chats: chats));
     } catch (error) {
       emit(
         state.copyWith(
           listStatus: ChatListStatus.failure,
           errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onChatGroupCreated(
+    ChatGroupCreated event,
+    Emitter<ChatState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        actionStatus: ChatActionStatus.loading,
+        errorMessage: null,
+        actionMessage: null,
+      ),
+    );
+
+    try {
+      final chat = await _chatRepository.createGroup(
+        event.credentials,
+        event.name.trim(),
+      );
+      final chats = await _chatRepository.getChats(event.credentials);
+      emit(
+        state.copyWith(
+          actionStatus: ChatActionStatus.success,
+          listStatus: ChatListStatus.success,
+          chats: _mergeChat(chats, chat),
+          actionMessage: 'Групу створено. ID: ${chat.id}',
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          actionStatus: ChatActionStatus.failure,
+          errorMessage: error.toString(),
+          actionMessage: null,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onChatJoinedById(
+    ChatJoinedById event,
+    Emitter<ChatState> emit,
+  ) async {
+    final chatId = event.chatId.trim();
+    if (state.chats.any((chat) => chat.id == chatId)) {
+      emit(
+        state.copyWith(
+          actionStatus: ChatActionStatus.success,
+          errorMessage: null,
+          actionMessage: 'Чат вже є у списку',
+        ),
+      );
+      return;
+    }
+
+    emit(
+      state.copyWith(
+        actionStatus: ChatActionStatus.loading,
+        errorMessage: null,
+        actionMessage: null,
+      ),
+    );
+
+    try {
+      final chat = await _chatRepository.joinChatById(
+        event.credentials,
+        chatId,
+      );
+      final chats = await _chatRepository.getChats(event.credentials);
+      emit(
+        state.copyWith(
+          actionStatus: ChatActionStatus.success,
+          listStatus: ChatListStatus.success,
+          chats: _mergeChat(chats, chat),
+          actionMessage: 'Чат додано до списку',
+        ),
+      );
+    } catch (error) {
+      emit(
+        state.copyWith(
+          actionStatus: ChatActionStatus.failure,
+          errorMessage: error.toString(),
+          actionMessage: null,
         ),
       );
     }
@@ -156,6 +241,15 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+  }
+
+  List<ChatSummary> _mergeChat(List<ChatSummary> chats, ChatSummary chat) {
+    final index = chats.indexWhere((item) => item.id == chat.id);
+    if (index == -1) {
+      return [...chats, chat];
+    }
+
+    return [...chats.take(index), chat, ...chats.skip(index + 1)];
   }
 
   @override

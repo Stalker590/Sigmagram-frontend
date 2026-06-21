@@ -15,6 +15,16 @@ class ChatRepository implements IChatRepository {
   }
 
   @override
+  Future<ChatSummary> createGroup(UserCredentials credentials, String name) {
+    return _apiClient.createGroup(credentials, name);
+  }
+
+  @override
+  Future<ChatSummary> joinChatById(UserCredentials credentials, String chatId) {
+    return _apiClient.joinChatById(credentials, chatId);
+  }
+
+  @override
   Future<({List<Messenge> messages, String userId})> getMessages(
     UserCredentials credentials,
     String chatId,

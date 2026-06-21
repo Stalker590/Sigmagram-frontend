@@ -68,6 +68,38 @@ class ApiClient {
         .toList();
   }
 
+  Future<ChatSummary> createGroup(
+    UserCredentials credentials,
+    String name,
+  ) async {
+    final data = await post('/create_group', {'name': name});
+    final chat = ChatSummary.fromJson(data['chat'] as Map<String, dynamic>);
+    return joinChatById(credentials, chat.id);
+  }
+
+  Future<ChatSummary> joinChatById(
+    UserCredentials credentials,
+    String chatId,
+  ) async {
+    final userId = credentials.userId;
+    if (userId == null || userId.isEmpty) {
+      throw ApiException('Спочатку увійдіть у профіль');
+    }
+
+    final data = await post(
+      '/find_chat',
+      credentials.toAuthBody({'chatId': chatId}),
+    );
+    final chat = ChatSummary.fromJson(data['chat'] as Map<String, dynamic>);
+
+    await post('/make_subscription', {
+      'SubscriptionId': userId,
+      'SubscriptionOnId': chat.id,
+    });
+
+    return chat;
+  }
+
   Future<({List<Messenge> messages, String userId})> getMessages(
     UserCredentials credentials,
     String chatId,
@@ -91,10 +123,7 @@ class ApiClient {
   ) async {
     await post(
       '/send_message',
-      credentials.toAuthBody({
-        'chatId': chatId,
-        'content': content,
-      }),
+      credentials.toAuthBody({'chatId': chatId, 'content': content}),
     );
   }
 }
